@@ -1,4 +1,4 @@
-// File: E:\Internship Assignments\VedaAi\frontend\src\app\result\[jobId]\page.tsx
+// File: E:\VedaAi\frontend\src\app\result\[jobId]\page.tsx
 import * as entry from '../../../../../src/app/result/[jobId]/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

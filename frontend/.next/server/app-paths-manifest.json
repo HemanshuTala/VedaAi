@@ -1,5 +1,6 @@
 {
-  "/result/[jobId]/page": "app/result/[jobId]/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/page": "app/page.js",
   "/create-assignment/page": "app/create-assignment/page.js",
-  "/page": "app/page.js"
+  "/result/[jobId]/page": "app/result/[jobId]/page.js"
 }

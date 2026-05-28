@@ -8,8 +8,9 @@
 #   3. veda-ai-redis     — Render Managed Redis (used by BullMQ)
 #
 # MongoDB: uses your existing MongoDB Atlas cluster (external).
-# Set MONGODB_URI and GROQ_API_KEY / OPENAI_API_KEY in Render's dashboard
-# or add them as secret environment variables below before deploying.
+#
+# ⚠️  BEFORE CLICKING "Apply Blueprint", go to each service → Environment and
+#     fill in every variable marked with sync: false (they are secrets).
 ###############################################################################
 
 services:
@@ -20,18 +21,16 @@ services:
   - type: web
     name: veda-ai-backend
     runtime: node
-    region: oregon            # Change to "frankfurt" or "singapore" if preferred
-    plan: free                # Upgrade to "starter" for always-on service
+    region: oregon            # Change to frankfurt or singapore if preferred
+    plan: free                # Upgrade to starter for always-on service
 
-    # Build settings
     rootDir: backend
-    buildCommand: npm install && npm run build
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm run start
 
-    # Health-check — Render uses this to confirm service is alive
+    # Render uses this path to decide when the service is healthy
     healthCheckPath: /health
 
-    # Expose the port Express listens on
     envVars:
       - key: PORT
         value: "5000"
@@ -40,21 +39,20 @@ services:
         value: production
 
       # ── MongoDB Atlas ────────────────────────────────────────────────────────
-      # Replace this value with your own Atlas connection string, or better yet
-      # manage it as a secret in the Render dashboard (Environment → Secret Files).
+      # Set this in Render Dashboard → veda-ai-backend → Environment
       - key: MONGODB_URI
-        sync: false           # "sync: false" means you must set it in the dashboard
+        sync: false
 
       # ── AI Keys ─────────────────────────────────────────────────────────────
-      # Provide at least ONE of the two keys below.
-      # Groq is preferred for speed; OpenAI is used as fallback.
+      # Provide at least ONE. Groq is preferred (faster & free-tier friendly).
       - key: GROQ_API_KEY
-        sync: false           # Set via Render dashboard → Environment
+        sync: false
 
       - key: OPENAI_API_KEY
-        sync: false           # Set via Render dashboard → Environment
+        sync: false
 
-      # ── Redis (auto-linked from the managed Redis instance below) ────────────
+      # ── Redis ────────────────────────────────────────────────────────────────
+      # Auto-injected from the managed Redis instance below
       - key: REDIS_URL
         fromService:
           name: veda-ai-redis
@@ -68,11 +66,15 @@ services:
     name: veda-ai-frontend
     runtime: node
     region: oregon
-
     plan: free
 
     rootDir: frontend
-    buildCommand: npm install && npm run build
+
+    # NODE_OPTIONS limits heap to 460 MB to stay within Render's 512 MB free
+    # tier RAM and prevent the silent OOM that surfaces as "webpack errors".
+    buildCommand: |
+      export NODE_OPTIONS="--max-old-space-size=460" && npm install && npm run build
+
     startCommand: npm run start
 
     envVars:
@@ -82,31 +84,22 @@ services:
       - key: NODE_ENV
         value: production
 
-      # Point the frontend at the deployed backend service URL.
-      # Render injects the public URL of veda-ai-backend automatically.
+      # ── Backend URL ──────────────────────────────────────────────────────────
+      # After the backend service is first deployed, copy its public URL from
+      # the Render Dashboard and paste it here (without a trailing slash).
+      # Example: https://veda-ai-backend.onrender.com
       - key: NEXT_PUBLIC_API_URL
-        fromService:
-          name: veda-ai-backend
-          type: web
-          property: host
-          # Render returns the host without protocol; prefix it here:
-          envVarPrefix: "https://"
-        # Fallback: you can also hard-code it after first deploy, e.g.:
-        # value: "https://veda-ai-backend.onrender.com"
+        sync: false
 
+      # Socket.io upgrades https:// to wss:// automatically — use the same URL.
       - key: NEXT_PUBLIC_WS_URL
-        fromService:
-          name: veda-ai-backend
-          type: web
-          property: host
-          envVarPrefix: "https://"
-        # Socket.io auto-upgrades the https:// connection to wss://.
+        sync: false
 
   # ---------------------------------------------------------------------------
-  # 3. Managed Redis (used by BullMQ job queue)
+  # 3. Managed Redis — backing store for BullMQ job queue
   # ---------------------------------------------------------------------------
   - type: redis
     name: veda-ai-redis
     region: oregon
-    plan: free                # Free tier: 25 MB RAM, no persistence
-    ipAllowList: []           # Allow all internal Render service connections
+    plan: free          # Free tier: 25 MB RAM, no persistence
+    ipAllowList: []     # Empty = allow all internal Render connections only
