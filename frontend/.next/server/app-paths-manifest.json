@@ -1,0 +1,5 @@
+{
+  "/result/[jobId]/page": "app/result/[jobId]/page.js",
+  "/create-assignment/page": "app/create-assignment/page.js",
+  "/page": "app/page.js"
+}
